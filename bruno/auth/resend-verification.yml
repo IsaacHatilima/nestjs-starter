@@ -1,0 +1,32 @@
+info:
+  name: Resend verification
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: '{{baseUrl}}/auth/resend-verification'
+  body:
+    type: json
+    data: |-
+      {
+        "email": "{{email}}"
+      }
+  auth:
+    type: none
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: 204
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  Replaces the pending verification token and emails a fresh link. Always 204, so it cannot be used to discover
+  accounts.

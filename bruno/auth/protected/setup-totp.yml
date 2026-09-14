@@ -1,0 +1,31 @@
+info:
+  name: Setup TOTP
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: '{{baseUrl}}/auth/setup-totp'
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        bru.setVar("totpSecret", res.body.data?.secret);
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: 200
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  Starts two-factor enrolment: returns the secret, the otpauth URL and a QR code data URL to scan. Nothing is enforced
+  until Enable TOTP succeeds.
+
+  Errors: TWO_FACTOR_ALREADY_ENABLED.

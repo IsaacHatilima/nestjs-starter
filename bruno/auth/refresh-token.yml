@@ -1,0 +1,40 @@
+info:
+  name: Refresh token
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: '{{baseUrl}}/auth/refresh-token'
+  body:
+    type: json
+    data: |-
+      {
+        "refreshToken": "{{refreshToken}}"
+      }
+  auth:
+    type: none
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        const data = res.body.data ?? {};
+        bru.setVar("accessToken", data.accessToken);
+        bru.setVar("refreshToken", data.refreshToken);
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: 200
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  Rotates the refresh token and issues a new access token. Presenting an already-rotated token revokes the whole session
+  (SESSION_REVOKED).
+
+  Errors: INVALID_TOKEN, SESSION_REVOKED.

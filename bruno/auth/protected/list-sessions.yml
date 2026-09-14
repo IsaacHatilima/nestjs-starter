@@ -1,0 +1,25 @@
+info:
+  name: List sessions
+  type: http
+  seq: 7
+
+http:
+  method: GET
+  url: '{{baseUrl}}/auth/list-sessions'
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: 200
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  Active sessions of the signed-in user with ip, userAgent and timestamps. `current: true` marks the session making the
+  call.

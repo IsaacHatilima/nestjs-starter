@@ -1,0 +1,9 @@
+{
+  "source": "hand-curated",
+  "url": null,
+  "note": "Written by hand from memory of published top-password lists. Every entry was verified present in the Have I Been Pwned corpus on 2026-09-12, the least common appearing 23,942 times. Superseded by a cited source; kept as the first entry in the audit trail.",
+  "sha256": "e4f24655960a8de5421d42acb3c7366fba5cf1037db04ab44cef251826ea5051",
+  "entries": 285,
+  "installedAt": "2026-09-12T10:21:00.000Z",
+  "previousSha256": null
+}

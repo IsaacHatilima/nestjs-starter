@@ -1,0 +1,34 @@
+info:
+  name: Regenerate recovery codes
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{baseUrl}}/auth/regenerate-recovery-codes"
+  body:
+    type: json
+    data: |-
+      {
+        "password": "{{password}}",
+        "code": "597649"
+      }
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Replaces every recovery code; the previous set stops working immediately.
+
+  Errors: TWO_FACTOR_NOT_ENABLED, INVALID_CREDENTIALS, INVALID_TWO_FACTOR_CODE.

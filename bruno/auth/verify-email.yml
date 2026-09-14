@@ -1,0 +1,33 @@
+info:
+  name: Verify email
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: '{{baseUrl}}/auth/verify-email'
+  body:
+    type: json
+    data: |-
+      {
+        "token": "3RIVOknlUZY-vaeJ0iLuAW4RLbLYi-s0HuS-Z5emfJ4"
+      }
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: '204'
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Consumes the emailed verification token (single use); paste it into `token` above. Login is blocked until this succeeds when
+  REQUIRE_EMAIL_VERIFICATION is true.
+
+  Errors: INVALID_TOKEN.

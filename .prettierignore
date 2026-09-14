@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+pnpm-lock.yaml
+drizzle
+
+# Owned by the domain-driver CLI: it rewrites these bytes and compares them, so reformatting causes churn.
+.claude/skills/domain-driver/SKILL.md

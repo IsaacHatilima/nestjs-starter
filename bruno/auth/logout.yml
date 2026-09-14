@@ -1,0 +1,31 @@
+info:
+  name: Logout
+  type: http
+  seq: 7
+
+http:
+  method: POST
+  url: '{{baseUrl}}/auth/logout'
+  body:
+    type: json
+    data: |-
+      {
+        "refreshToken": "{{refreshToken}}"
+      }
+  auth:
+    type: none
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: 204
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  Revokes the session behind the refresh token. Idempotent: unknown or already revoked tokens also answer 204.

@@ -1,0 +1,34 @@
+info:
+  name: Enable TOTP
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/auth/enable-totp"
+  body:
+    type: json
+    data: |-
+      {
+        "code": "761185"
+      }
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Confirms enrolment with the first code from the authenticator app and returns ten recovery codes. They are shown only
+  once; only their hashes are stored.
+
+  Errors: TWO_FACTOR_NOT_SETUP, INVALID_TWO_FACTOR_CODE.

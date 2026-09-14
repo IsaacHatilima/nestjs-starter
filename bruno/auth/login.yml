@@ -1,0 +1,45 @@
+info:
+  name: Login
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: '{{baseUrl}}/auth/login'
+  body:
+    type: json
+    data: |-
+      {
+        "email": "{{email}}",
+        "password": "{{password}}"
+      }
+  auth:
+    type: none
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        const data = res.body.data ?? {};
+        if (data.status === "authenticated") {
+          bru.setVar("accessToken", data.accessToken);
+          bru.setVar("refreshToken", data.refreshToken);
+        } else if (data.status === "two_factor_required") {
+          bru.setVar("challengeToken", data.challengeToken);
+        }
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: 200
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  Password login. Returns `status: authenticated` with tokens, or `status: two_factor_required` with a challenge token
+  when TOTP is enabled. The script stores whichever comes back.
+
+  Errors: INVALID_CREDENTIALS, EMAIL_NOT_VERIFIED.

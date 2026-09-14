@@ -1,0 +1,37 @@
+info:
+  name: Update profile
+  type: http
+  seq: 1
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/profile"
+  body:
+    type: json
+    data: |-
+      {
+        "firstName": "Isaac",
+        "lastName": "Hats",
+        "avatarUrl": "https://cdn.example.test/avatars/isaac.png"
+      }
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Changes part of the signed-in user's profile. Every field is optional, so send only the ones to change; at least one
+  must be present. Send `"avatarUrl": null` to clear the avatar. An avatar URL must be an absolute http or https URL,
+  because the value is rendered into an `<img src>`.
+
+  Errors: VALIDATION_ERROR, NOT_FOUND.

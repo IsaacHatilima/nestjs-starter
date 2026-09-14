@@ -1,0 +1,23 @@
+import { Controller, HttpCode, Post } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import type { AuthPrincipal } from '@/security/auth-principal';
+import { CurrentAuth } from '@/security/decorators/current-auth.decorator';
+import { SetupTotpService } from '@/auth/setup-totp/services/SetupTotp.service';
+import type { TwoFactorSetup } from '@/auth/setup-totp/types/TwoFactorSetup.types';
+
+/**
+ * POST /auth/setup-totp: start two-factor enrolment. Validation, throttling and auth are declarative; the service does
+ * the work.
+ */
+@ApiTags('auth')
+@ApiBearerAuth()
+@Controller('auth')
+export class SetupTotpController {
+  constructor(private readonly service: SetupTotpService) {}
+
+  @Post('setup-totp')
+  @HttpCode(200)
+  handle(@CurrentAuth() auth: AuthPrincipal): Promise<TwoFactorSetup> {
+    return this.service.handle(auth);
+  }
+}

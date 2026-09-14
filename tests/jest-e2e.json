@@ -1,0 +1,39 @@
+{
+  "moduleFileExtensions": [
+    "js",
+    "json",
+    "ts"
+  ],
+  "rootDir": "..",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "tsconfig": "tsconfig.jest.json"
+      }
+    ]
+  },
+  "transformIgnorePatterns": [
+    "/node_modules/(?!.*(@scure|@noble)/)"
+  ],
+  "globalSetup": "<rootDir>/tests/setup/global-setup.ts",
+  "testTimeout": 30000,
+  "roots": [
+    "<rootDir>/tests/feature"
+  ],
+  "collectCoverageFrom": [
+    "src/**/*.ts",
+    "!src/main.ts",
+    "!src/**/*.module.ts",
+    "!src/**/*.spec.ts",
+    "!src/database/schema/**",
+    "!src/database/migrate.ts",
+    "!src/testing/**"
+  ],
+  "moduleNameMapper": {
+    "^@/(.*)$": "<rootDir>/src/$1",
+    "^@tests/(.*)$": "<rootDir>/tests/$1"
+  }
+}

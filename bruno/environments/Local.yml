@@ -1,0 +1,11 @@
+name: Local
+variables:
+  - name: baseUrl
+    value: http://localhost:3000
+    description: Where the API is listening.
+  - name: email
+    value: isaac@example.test
+    description: The collection account. Register and Login must agree on it, so it lives here.
+  - name: password
+    value: tihbyv-2deqku-cYjked
+    description: The collection account password. Shared by six requests, so it lives here.

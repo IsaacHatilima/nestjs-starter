@@ -1,0 +1,12 @@
+info:
+  name: Protected
+  type: folder
+  seq: 10
+
+# Every request in this folder needs a bearer token, so the scheme is defined once here rather than per route.
+# A folder's auth overrides the collection's; the requests inside still say `auth: inherit` to point at it, because
+# Bruno treats a missing `auth` key as "none" rather than "inherit".
+request:
+  auth:
+    type: bearer
+    token: '{{accessToken}}'

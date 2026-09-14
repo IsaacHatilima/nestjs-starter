@@ -1,0 +1,9 @@
+{
+  "source": "NCSC top 100k (via SecLists)",
+  "url": "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Common-Credentials/100k-most-used-passwords-NCSC.txt",
+  "note": null,
+  "sha256": "4ed50db64141e3e9b4af107b2f0c1de83599362978503d7f4f24c37e5b2a5800",
+  "entries": 99839,
+  "installedAt": "2026-09-12T10:38:29.309Z",
+  "previousSha256": "e4f24655960a8de5421d42acb3c7366fba5cf1037db04ab44cef251826ea5051"
+}

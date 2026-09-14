@@ -1,0 +1,33 @@
+info:
+  name: Revoke session
+  type: http
+  seq: 8
+
+http:
+  method: POST
+  url: "{{baseUrl}}/auth/revoke-session"
+  body:
+    type: json
+    data: |-
+      {
+        "sessionId": "0500b170-d22a-49a3-9155-75ea5ee24806"
+      }
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "204"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Revokes one of your own sessions by id (see List sessions).
+
+  Errors: NOT_FOUND when the id is unknown or belongs to someone else, VALIDATION_ERROR when it is not a UUID.
