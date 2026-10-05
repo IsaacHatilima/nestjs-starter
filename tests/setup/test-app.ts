@@ -1,5 +1,4 @@
 import { INestApplication } from '@nestjs/common';
-import type { Server } from 'node:http';
 import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
 import request from 'supertest';
@@ -7,10 +6,17 @@ import type { App } from 'supertest/types';
 import { AppModule } from '@/app.module';
 import type { Envelope, ErrorBody, FieldIssue } from '@/common/envelope';
 import { ENV } from '@/config/env.token';
+import { setupApiDocs } from '@/config/api-docs';
+import { configureHttpApp } from '@/config/http-app';
 import type { Env } from '@/config/env.schema';
 import { Database, DRIZZLE } from '@/database/database.tokens';
 import { MAIL_TRANSPORT } from '@/mail/mail.transport';
 import { MemoryMailTransport } from '@/mail/transports/memory.transport';
+import { DeliverEmailService } from '@/mail/deliver-email/services/DeliverEmail.service';
+import { httpWithMail } from './http-with-mail';
+import { listenOn, TEST_PORT } from './http-server';
+
+export { TEST_PORT } from './http-server';
 
 export interface TestApp {
   app: INestApplication<App>;
@@ -25,10 +31,12 @@ export async function createTestApp(): Promise<TestApp> {
     imports: [AppModule],
   }).compile();
   const app = moduleRef.createNestApplication<INestApplication<App>>();
+  const env = app.get<Env>(ENV);
+  configureHttpApp(app, env);
+  setupApiDocs(app, env);
   await app.init();
   // The suites must never reach a third party: it makes them slow, flaky and dependent on someone else's uptime.
   // .env.test switches the breach lookup off; fail loudly rather than silently calling out.
-  const env = app.get<Env>(ENV);
   if (env.PASSWORD_BREACH_CHECK) {
     await app.close();
     throw new Error('PASSWORD_BREACH_CHECK must be false in .env.test; tests must not call Have I Been Pwned');
@@ -44,28 +52,14 @@ export async function createTestApp(): Promise<TestApp> {
 
   const mail = app.get<MemoryMailTransport>(MAIL_TRANSPORT);
   const db = app.get<Database>(DRIZZLE);
+  const delivery = app.get(DeliverEmailService);
   return {
     app,
-    http: () => request(app.getHttpServer()),
+    http: () => httpWithMail(app.getHttpServer(), () => delivery.handle()),
     mail,
     db,
     close: () => app.close(),
   };
-}
-
-/** The fixed port every e2e suite binds; well clear of the kernel's ephemeral range. */
-export const TEST_PORT = 1992;
-
-function listenOn(app: INestApplication<App>, port: number): Promise<void> {
-  const server = app.getHttpServer() as Server;
-  return new Promise((resolve, reject) => {
-    const failed = (error: Error): void => reject(error);
-    server.once('error', failed);
-    server.listen(port, '127.0.0.1', () => {
-      server.removeListener('error', failed);
-      resolve();
-    });
-  });
 }
 
 export type { Envelope, ErrorBody, FieldIssue };
@@ -125,7 +119,7 @@ export function useTestApp(): TestAppRef {
 
 export async function resetDatabase(db: Database): Promise<void> {
   await db.execute(
-    sql`truncate table users, profiles, sessions, verification_tokens, two_factor_recovery_codes cascade`,
+    sql`truncate table users, profiles, sessions, verification_tokens, two_factor_recovery_codes, mail_outbox cascade`,
   );
 }
 
@@ -172,7 +166,7 @@ export async function registerAndLogin(t: TestApp, email: string, password: stri
   expectStatus(registered, 201, 'POST /auth/register');
   const token = lastMailToken(t.mail);
   const verified = await t.http().post('/auth/verify-email').send({ token });
-  expectStatus(verified, 204, 'POST /auth/verify-email');
+  expectStatus(verified, 200, 'POST /auth/verify-email');
   return login(t, email, password);
 }
 

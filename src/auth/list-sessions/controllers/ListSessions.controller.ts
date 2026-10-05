@@ -1,5 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiEnvelopeResponse } from '@/common/openapi/api-envelope-response.decorator';
+import { SessionListSchema } from '@/auth/list-sessions/schemas/Session.schema';
 import type { AuthPrincipal } from '@/security/auth-principal';
 import { CurrentAuth } from '@/security/decorators/current-auth.decorator';
 import { ListSessionsService } from '@/auth/list-sessions/services/ListSessions.service';
@@ -16,6 +18,7 @@ export class ListSessionsController {
   constructor(private readonly service: ListSessionsService) {}
 
   @Get('list-sessions')
+  @ApiEnvelopeResponse({ data: SessionListSchema, bearer: true })
   handle(@CurrentAuth() auth: AuthPrincipal): Promise<Session[]> {
     return this.service.handle(auth);
   }

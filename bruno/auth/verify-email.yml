@@ -12,12 +12,14 @@ http:
       {
         "token": "3RIVOknlUZY-vaeJ0iLuAW4RLbLYi-s0HuS-Z5emfJ4"
       }
+  auth:
+    type: none
 
 runtime:
   assertions:
     - expression: res.status
       operator: eq
-      value: '204'
+      value: '200'
 
 settings:
   encodeUrl: true
@@ -27,7 +29,7 @@ settings:
   forwardAuthorizationHeader: true
 
 docs: |-
-  Consumes the emailed verification token (single use); paste it into `token` above. Login is blocked until this succeeds when
-  REQUIRE_EMAIL_VERIFICATION is true.
+  Consumes the emailed verification token once and returns 200 with null data. Paste it into `token` above. Login is
+  blocked until this succeeds when REQUIRE_EMAIL_VERIFICATION is true.
 
   Errors: INVALID_TOKEN.

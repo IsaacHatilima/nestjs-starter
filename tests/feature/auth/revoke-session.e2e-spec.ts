@@ -10,7 +10,7 @@ describe('POST /auth/revoke-session (e2e)', () => {
     const other = await login(t, 'ada@example.com');
     const otherId = (await listSessions(t, mine.accessToken)).find((s) => !s.current)?.id;
 
-    await t.http().post('/auth/revoke-session').set(bearer(mine.accessToken)).send({ sessionId: otherId }).expect(204);
+    await t.http().post('/auth/revoke-session').set(bearer(mine.accessToken)).send({ sessionId: otherId }).expect(200);
 
     expect(await listSessions(t, mine.accessToken)).toHaveLength(1);
     await t.http().get('/auth/me').set(bearer(other.accessToken)).expect(401);

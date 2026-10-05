@@ -14,7 +14,7 @@ describe('POST /auth/change-password (e2e)', () => {
       .post('/auth/change-password')
       .set(bearer(current.accessToken))
       .send({ currentPassword: PASSWORD, newPassword: NEW_PASSWORD })
-      .expect(204);
+      .expect(200);
 
     await t.http().get('/auth/me').set(bearer(current.accessToken)).expect(200);
     await t.http().get('/auth/me').set(bearer(other.accessToken)).expect(401);

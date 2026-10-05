@@ -58,6 +58,14 @@ Full guidance: `.claude/skills/domain-driver/SKILL.md`. Re-run `npx domain-drive
   within `db.transaction(...)`, and omit it everywhere else. Passing the wrong executor is not a type error and not
   visible at runtime until a rollback, so never widen this beyond the methods that need it.
 - Services never touch `Database`, `DRIZZLE`, `transaction` or a schema table.
+- Services inject shared repositories directly for reads or writes that need no flow-specific persistence work. Keep a
+  flow repository for mapping, database-error translation or transactions; do not add forwarding methods just to hide a
+  shared repository. A flow can therefore have a controller and service without a flow repository.
+- Registration commits the account, profile, verification token and encrypted email job together. Resend and recovery
+  commit the replacement token and email job together. These transactions call `VerificationTokenRepository.replace` and
+  `MailOutboxRepository.enqueue` with their trailing executor; services never enqueue outside the transaction.
+- Token replacement serializes each user's token purpose with a transaction-scoped advisory lock. It requires the flow's
+  executor and rejects the default database executor, so the lock spans both replacement and the queued email write.
 
 ## Test rules
 
@@ -88,9 +96,30 @@ Full guidance: `.claude/skills/domain-driver/SKILL.md`. Re-run `npx domain-drive
 
 ## Response envelope
 
-- Every response carries all three keys: `{ success, data, error }`. Success sets `error: null`, failure sets
-  `data: null`. Handlers return plain data; `ResponseEnvelopeInterceptor` and `HttpExceptionFilter` shape it. The
-  contract itself lives in `src/common/envelope.ts`, and tests import it from there rather than redeclaring it.
+- Every application JSON response carries all three keys: `{ success, data, error }`. Success sets `error: null`,
+  failure sets `data: null`. Handlers return plain data; `ResponseEnvelopeInterceptor` and `HttpExceptionFilter` shape
+  it. The contract itself lives in `src/common/envelope.ts`, and tests import it from there rather than redeclaring it.
+- Successful actions returning no data use `200` with `{ success: true, data: null, error: null }`. Do not use `204` for
+  those actions: HTTP forbids a response body at that status. CORS preflight still uses bodyless `204`; Swagger HTML and
+  assets are outside the application JSON contract.
+- Document each route's success data and error codes with `ApiEnvelopeResponse`. Public result types derive from their
+  Zod response schemas, so Swagger and TypeScript share one definition. Validation errors alone require field details.
+
+## Runtime and mail delivery
+
+- `configureHttpApp` applies Helmet, CORS and proxy trust before routes initialize. Production and HTTP tests use the
+  same setup; keep local HTTP usable by enabling HSTS and CSP HTTPS upgrades only in production.
+- `/health` reports liveness; `/health/readiness` checks PostgreSQL within one second and reports `SERVICE_UNAVAILABLE`
+  with status `503` on failure. Both probes bypass authentication and throttling.
+- The database pool closes in `onApplicationShutdown`, after HTTP connections close. Outbox polling stops in
+  `onModuleDestroy`, and current delivery finishes before application shutdown.
+- Email delivery runs through `src/mail/deliver-email/`; there is no HTTP endpoint for the worker. The PostgreSQL outbox
+  holds encrypted messages, claims them with row locks and renewable leases, and retries SMTP failures with exponential
+  backoff. Successful, consumed and expired jobs are removed; replacing a token cascades its queued job.
+- Delivery is at least once: a crash after SMTP acceptance but before deleting a job can resend the same message. Never
+  log a queued payload, SMTP exception or token-bearing link. Keep the encryption key until pending jobs drain.
+- Tests disable background polling and flush queued mail explicitly through the HTTP helper after each response.
+  Database-backed tests still run serially; dedicated runtime suites exercise actual throttling instead of bypassing it.
 - `error.code` is the client's branching key, never `error.message` and never the HTTP status alone. Statuses collide:
   five codes share `401`, four share `400`. New codes go in `src/common/errors/error-codes.ts` and are thrown through an
   `AppError` factory in `src/common/errors/auth-errors.ts`.

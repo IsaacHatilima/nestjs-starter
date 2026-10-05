@@ -14,7 +14,7 @@ describe('POST /auth/disable-totp (e2e)', () => {
       .post('/auth/disable-totp')
       .set(bearer(accessToken))
       .send({ password: PASSWORD, code: await codeAfter(secret, step) })
-      .expect(204);
+      .expect(200);
 
     const login = await t.http().post('/auth/login').send({ email: 'ada@example.com', password: PASSWORD }).expect(200);
     expect(dataOf<{ status: string }>(login).status).toBe('authenticated');

@@ -31,7 +31,8 @@ settings:
   maxRedirects: 5
 
 docs: |-
-  Creates an unverified account and its profile in one transaction, and emails a verification link. With
-  MAIL_DRIVER=log the link is printed by the server; copy its token into the body of Verify email.
+  Creates an unverified account, its profile, the verification token and a pending email in one transaction. Returns
+  201 with User data; delivery is retried after commit. With MAIL_DRIVER=log the worker prints the link; paste its
+  token into the body of Verify email.
 
   Errors: VALIDATION_ERROR, PASSWORD_COMPROMISED, EMAIL_ALREADY_REGISTERED.

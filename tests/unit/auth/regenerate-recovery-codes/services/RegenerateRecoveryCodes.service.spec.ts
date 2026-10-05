@@ -1,3 +1,5 @@
+import { UserRepository } from '@/auth/shared/repositories/User.repository';
+import { RecoveryCodeRepository } from '@/auth/shared/repositories/RecoveryCode.repository';
 import { generate } from 'otplib';
 import { ErrorCode } from '@/common/errors/error-codes';
 import { securityServices } from '@tests/setup/security.fixture';
@@ -14,8 +16,8 @@ beforeAll(async () => {
 });
 
 function build(secret: string) {
-  const repository = {
-    findCredentialsById: jest.fn().mockResolvedValue(
+  const userRepository = {
+    findById: jest.fn().mockResolvedValue(
       credentials({
         passwordHash,
         twoFactorEnabled: true,
@@ -23,16 +25,18 @@ function build(secret: string) {
       }),
     ),
     recordTotpStep: jest.fn().mockResolvedValue(true),
-    consumeRecoveryCode: jest.fn().mockResolvedValue(false),
-    replaceRecoveryCodes: jest.fn().mockResolvedValue(undefined),
   };
+  const codeRepository = { consume: jest.fn().mockResolvedValue(false) };
+  const repository = { replaceRecoveryCodes: jest.fn().mockResolvedValue(undefined) };
   const service = new RegenerateRecoveryCodesService(
     repository as unknown as RegenerateRecoveryCodesRepository,
+    userRepository as unknown as UserRepository,
+    codeRepository as unknown as RecoveryCodeRepository,
     hasher,
     verifier,
     recovery,
   );
-  return { repository, service };
+  return { repository, userRepository, codeRepository, service };
 }
 
 describe('RegenerateRecoveryCodesService', () => {

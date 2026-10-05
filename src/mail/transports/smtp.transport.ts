@@ -11,6 +11,9 @@ export class SmtpMailTransport implements MailTransport {
       port: env.SMTP_PORT,
       secure: env.SMTP_SECURE,
       auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASS ?? '' } : undefined,
+      connectionTimeout: 15_000,
+      greetingTimeout: 15_000,
+      socketTimeout: 60_000,
     });
   }
 

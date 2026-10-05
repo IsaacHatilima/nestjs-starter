@@ -1,14 +1,8 @@
+import type { z } from 'zod';
+import type { SessionSchema } from '@/auth/list-sessions/schemas/Session.schema';
+
 /** A login session as shown to its owner. */
-export interface Session {
-  id: string;
-  ip: string | null;
-  userAgent: string | null;
-  /** True for the session making the request. */
-  current: boolean;
-  createdAt: string;
-  lastUsedAt: string;
-  expiresAt: string;
-}
+export type Session = z.infer<typeof SessionSchema>;
 
 /** Repository-level session row with real dates. */
 export interface SessionRecord {

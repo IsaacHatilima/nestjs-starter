@@ -1,6 +1,8 @@
+import { z } from 'zod';
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { ApiEnvelopeResponse } from '@/common/openapi/api-envelope-response.decorator';
 import { CREDENTIAL_THROTTLE } from '@/common/throttle';
 import { Public } from '@/security/decorators/public.decorator';
 import { LogoutDto } from '@/auth/logout/dto/Logout.dto';
@@ -18,7 +20,8 @@ export class LogoutController {
   @Public()
   @Throttle(CREDENTIAL_THROTTLE)
   @Post('logout')
-  @HttpCode(204)
+  @HttpCode(200)
+  @ApiEnvelopeResponse({ data: z.null(), validation: true })
   handle(@Body() body: LogoutDto): Promise<void> {
     return this.service.handle(body);
   }

@@ -7,7 +7,7 @@ const { cipher, totp, recovery, verifier } = securityServices();
 function store() {
   return {
     recordTotpStep: jest.fn().mockResolvedValue(true),
-    consumeRecoveryCode: jest.fn(),
+    consume: jest.fn(),
   };
 }
 
@@ -17,9 +17,9 @@ describe('TwoFactorVerifier', () => {
     const subject = credentials({ twoFactorSecret: cipher.encrypt(secret) });
     const target = store();
 
-    await expect(verifier.verify(subject, await generate({ secret }), target)).resolves.toBe(true);
+    await expect(verifier.verify(subject, await generate({ secret }), target, target)).resolves.toBe(true);
     expect(target.recordTotpStep).toHaveBeenCalledWith(USER_ID, expect.any(Number));
-    expect(target.consumeRecoveryCode).not.toHaveBeenCalled();
+    expect(target.consume).not.toHaveBeenCalled();
   });
 
   it('rejects an authenticator code that replays the last used step', async () => {
@@ -32,7 +32,7 @@ describe('TwoFactorVerifier', () => {
     });
     const target = store();
 
-    await expect(verifier.verify(subject, code, target)).resolves.toBe(false);
+    await expect(verifier.verify(subject, code, target, target)).resolves.toBe(false);
     expect(target.recordTotpStep).not.toHaveBeenCalled();
   });
 
@@ -42,7 +42,7 @@ describe('TwoFactorVerifier', () => {
     const target = store();
     target.recordTotpStep.mockResolvedValue(false);
 
-    await expect(verifier.verify(subject, await generate({ secret }), target)).resolves.toBe(false);
+    await expect(verifier.verify(subject, await generate({ secret }), target, target)).resolves.toBe(false);
   });
 
   it('falls back to consuming a recovery code', async () => {
@@ -50,10 +50,10 @@ describe('TwoFactorVerifier', () => {
       twoFactorSecret: cipher.encrypt(totp.generateSecret()),
     });
     const target = store();
-    target.consumeRecoveryCode.mockResolvedValue(true);
+    target.consume.mockResolvedValue(true);
 
-    await expect(verifier.verify(subject, 'ABCDE-FGH23', target)).resolves.toBe(true);
-    expect(target.consumeRecoveryCode).toHaveBeenCalledWith(USER_ID, recovery.hash('abcde-fgh23'));
+    await expect(verifier.verify(subject, 'ABCDE-FGH23', target, target)).resolves.toBe(true);
+    expect(target.consume).toHaveBeenCalledWith(USER_ID, recovery.hash('abcde-fgh23'));
   });
 
   it('rejects when neither the code nor a recovery code matches', async () => {
@@ -61,15 +61,17 @@ describe('TwoFactorVerifier', () => {
       twoFactorSecret: cipher.encrypt(totp.generateSecret()),
     });
     const target = store();
-    target.consumeRecoveryCode.mockResolvedValue(false);
+    target.consume.mockResolvedValue(false);
 
-    await expect(verifier.verify(subject, '000000', target)).resolves.toBe(false);
+    await expect(verifier.verify(subject, '000000', target, target)).resolves.toBe(false);
   });
 
   it('rejects when the subject has no secret', async () => {
     const target = store();
 
-    await expect(verifier.verify(credentials({ twoFactorSecret: null }), '123456', target)).resolves.toBe(false);
-    expect(target.consumeRecoveryCode).not.toHaveBeenCalled();
+    await expect(verifier.verify(credentials({ twoFactorSecret: null }), '123456', target, target)).resolves.toBe(
+      false,
+    );
+    expect(target.consume).not.toHaveBeenCalled();
   });
 });

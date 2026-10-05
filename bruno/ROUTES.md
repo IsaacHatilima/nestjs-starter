@@ -9,6 +9,11 @@ Base URL in development: `http://localhost:3000`. Every response uses one envelo
 
 All three keys are always present, so a client never probes for a missing one. `success` discriminates the two shapes.
 
+An operation with no return value responds with `200` and `{ "success": true, "data": null, "error": null }`. The JSON
+body is part of the contract, so these operations do not use the bodyless `204` status. When API docs are enabled,
+Swagger at `/docs` documents every response envelope, error-code alternative and both login outcomes from the public
+output schemas.
+
 `code` and the HTTP status answer different questions and neither replaces the other. The status is the transport signal
 that proxies, caches and HTTP clients understand; `code` is the application discriminator a client branches on, because
 statuses collide. Five codes share `401` alone — `TOKEN_EXPIRED` means refresh and retry, while `SESSION_REVOKED` means
@@ -16,6 +21,10 @@ log out — and no status can tell those apart. Never branch on `message`: it is
 
 `details` is only ever set on `VALIDATION_ERROR`, where it lists every failing field as `{ path, message }`. A `400`
 that never reached a schema — a malformed JSON body, a failed parse pipe — is `BAD_REQUEST` and carries no `details`.
+
+Routes with a JSON request body can return `VALIDATION_ERROR` or `BAD_REQUEST`. All routes can return `RATE_LIMITED` and
+`INTERNAL_ERROR`. Bearer routes can also return `INVALID_TOKEN`, `TOKEN_EXPIRED` or `SESSION_REVOKED` before their
+handler runs; the tables list the additional errors each flow can produce.
 
 Protected routes take `Authorization: Bearer <accessToken>`. How long an access token lasts is set by
 `JWT_ACCESS_TTL_MINUTES`, which also takes `never` for a token with no `exp` claim. Either way the token is checked
@@ -34,13 +43,13 @@ defined, so no request repeats it.
 
 ## Account
 
-| Method | Path                        | Auth   | Body                                                             | Response                             | Errors                                                                 |
-| ------ | --------------------------- | ------ | ---------------------------------------------------------------- | ------------------------------------ | ---------------------------------------------------------------------- |
-| POST   | `/auth/register`            | –      | `{ email, password, firstName, lastName }` (password ≥ 15 chars) | 201 `User`; sends verification email | `VALIDATION_ERROR`, `PASSWORD_COMPROMISED`, `EMAIL_ALREADY_REGISTERED` |
-| POST   | `/auth/verify-email`        | –      | `{ token }` from the email link                                  | 204                                  | `INVALID_TOKEN`                                                        |
-| POST   | `/auth/resend-verification` | –      | `{ email }`                                                      | 204 always                           | –                                                                      |
-| GET    | `/auth/me`                  | bearer | –                                                                | 200 `User` (carries `profile`)       | `INVALID_TOKEN`, `SESSION_REVOKED`                                     |
-| POST   | `/auth/change-password`     | bearer | `{ currentPassword, newPassword }`                               | 204; other sessions revoked          | `INVALID_CREDENTIALS`                                                  |
+| Method | Path                        | Auth   | Body                                                             | Response                              | Errors                                             |
+| ------ | --------------------------- | ------ | ---------------------------------------------------------------- | ------------------------------------- | -------------------------------------------------- |
+| POST   | `/auth/register`            | –      | `{ email, password, firstName, lastName }` (password ≥ 15 chars) | 201 `User`; queues verification email | `PASSWORD_COMPROMISED`, `EMAIL_ALREADY_REGISTERED` |
+| POST   | `/auth/verify-email`        | –      | `{ token }` from the email link                                  | 200 null                              | `INVALID_TOKEN`                                    |
+| POST   | `/auth/resend-verification` | –      | `{ email }`                                                      | 200 null always                       | –                                                  |
+| GET    | `/auth/me`                  | bearer | –                                                                | 200 `User` (carries `profile`)        | `INVALID_TOKEN`, `SESSION_REVOKED`                 |
+| POST   | `/auth/change-password`     | bearer | `{ currentPassword, newPassword }`                               | 200 null; other sessions revoked      | `INVALID_CREDENTIALS`, `PASSWORD_COMPROMISED`      |
 
 ## Profile
 
@@ -63,7 +72,7 @@ therefore only appears when the row was removed by hand.
 | POST   | `/auth/login`             | –    | `{ email, password }`      | 200 authenticated or challenged     |
 | POST   | `/auth/verify-two-factor` | –    | `{ challengeToken, code }` | 200 authenticated                   |
 | POST   | `/auth/refresh-token`     | –    | `{ refreshToken }`         | 200 `{ accessToken, refreshToken }` |
-| POST   | `/auth/logout`            | –    | `{ refreshToken }`         | 204 always                          |
+| POST   | `/auth/logout`            | –    | `{ refreshToken }`         | 200 null always                     |
 
 `/auth/login` answers in one of two shapes, and `/auth/verify-two-factor` turns the second into the first:
 
@@ -78,10 +87,10 @@ on login; `INVALID_TOKEN`, `TOKEN_EXPIRED`, `INVALID_TWO_FACTOR_CODE`, `TWO_FACT
 
 ## Password recovery
 
-| Method | Path                    | Auth | Body                  | Response                      | Errors          |
-| ------ | ----------------------- | ---- | --------------------- | ----------------------------- | --------------- |
-| POST   | `/auth/forgot-password` | –    | `{ email }`           | 204 always; sends reset email | –               |
-| POST   | `/auth/reset-password`  | –    | `{ token, password }` | 204; every session revoked    | `INVALID_TOKEN` |
+| Method | Path                    | Auth | Body                  | Response                        | Errors                                  |
+| ------ | ----------------------- | ---- | --------------------- | ------------------------------- | --------------------------------------- |
+| POST   | `/auth/forgot-password` | –    | `{ email }`           | 200 null; queues reset email    | –                                       |
+| POST   | `/auth/reset-password`  | –    | `{ token, password }` | 200 null; every session revoked | `INVALID_TOKEN`, `PASSWORD_COMPROMISED` |
 
 ## Two-factor (all bearer)
 
@@ -89,7 +98,7 @@ on login; `INVALID_TOKEN`, `TOKEN_EXPIRED`, `INVALID_TWO_FACTOR_CODE`, `TWO_FACT
 | ------ | --------------------------------- | -------------------- | ---------------------------------------------- | -------------------------------------------------------------------------- |
 | POST   | `/auth/setup-totp`                | –                    | 200 `{ secret, otpauthUrl, qrCodeDataUrl }`    | `TWO_FACTOR_ALREADY_ENABLED`                                               |
 | POST   | `/auth/enable-totp`               | `{ code }`           | 200 `{ recoveryCodes: string[10] }` shown once | `TWO_FACTOR_NOT_SETUP`, `INVALID_TWO_FACTOR_CODE`                          |
-| POST   | `/auth/disable-totp`              | `{ password, code }` | 204                                            | `TWO_FACTOR_NOT_ENABLED`, `INVALID_CREDENTIALS`, `INVALID_TWO_FACTOR_CODE` |
+| POST   | `/auth/disable-totp`              | `{ password, code }` | 200 null                                       | `TWO_FACTOR_NOT_ENABLED`, `INVALID_CREDENTIALS`, `INVALID_TWO_FACTOR_CODE` |
 | POST   | `/auth/regenerate-recovery-codes` | `{ password, code }` | 200 `{ recoveryCodes }`                        | same as disable                                                            |
 
 ## Sessions (all bearer)
@@ -97,8 +106,8 @@ on login; `INVALID_TOKEN`, `TOKEN_EXPIRED`, `INVALID_TWO_FACTOR_CODE`, `TWO_FACT
 | Method | Path                          | Body            | Response                                           | Errors                             |
 | ------ | ----------------------------- | --------------- | -------------------------------------------------- | ---------------------------------- |
 | GET    | `/auth/list-sessions`         | –               | 200 `Session[]` (`current: true` marks the caller) | –                                  |
-| POST   | `/auth/revoke-session`        | `{ sessionId }` | 204                                                | `NOT_FOUND` (not yours or unknown) |
-| POST   | `/auth/revoke-other-sessions` | –               | 204                                                | –                                  |
+| POST   | `/auth/revoke-session`        | `{ sessionId }` | 200 null                                           | `NOT_FOUND` (not yours or unknown) |
+| POST   | `/auth/revoke-other-sessions` | –               | 200 null                                           | –                                  |
 
 ## Shapes
 

@@ -8,7 +8,7 @@ const { tokens } = securityServices();
 describe('issueSession', () => {
   it('stores a hashed refresh token and returns a verifiable access token', async () => {
     const store = {
-      createSession: jest.fn().mockResolvedValue({ id: SESSION_ID }),
+      create: jest.fn().mockResolvedValue({ id: SESSION_ID }),
     };
 
     const pair = await issueSession(tokens, store, USER_ID, META);
@@ -19,7 +19,7 @@ describe('issueSession', () => {
       expiresAt: Date;
       ip: string | null;
       userAgent: string | null;
-    }>(store.createSession);
+    }>(store.create);
     expect(stored.userId).toBe(USER_ID);
     expect(stored.refreshTokenHash).toBe(tokens.hashOpaqueToken(pair.refreshToken));
     expect(stored.expiresAt.getTime()).toBeGreaterThan(Date.now());

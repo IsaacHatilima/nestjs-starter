@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Env } from '@/config/env.schema';
 import { ENV } from '@/config/env.token';
-import { MAIL_TRANSPORT, type MailTransport } from './mail.transport';
+import { MAIL_TRANSPORT, type MailMessage, type MailTransport } from './mail.transport';
 import { emailVerificationTemplate } from './templates/email-verification.template';
 import type { MailContent } from './templates/mail-template';
 import { passwordResetTemplate } from './templates/password-reset.template';
@@ -16,14 +16,18 @@ export class MailerService {
     @Inject(ENV) private readonly env: Env,
   ) {}
 
-  sendEmailVerification(to: string, token: string): Promise<void> {
+  emailVerificationMessage(to: string, token: string): MailMessage {
     const link = this.dashboardLink(VERIFY_EMAIL_PATH, token);
-    return this.deliver(to, emailVerificationTemplate(this.env.APP_NAME, link));
+    return this.message(to, emailVerificationTemplate(this.env.APP_NAME, link));
   }
 
-  sendPasswordReset(to: string, token: string): Promise<void> {
+  passwordResetMessage(to: string, token: string): MailMessage {
     const link = this.dashboardLink(RESET_PASSWORD_PATH, token);
-    return this.deliver(to, passwordResetTemplate(this.env.APP_NAME, link));
+    return this.message(to, passwordResetTemplate(this.env.APP_NAME, link));
+  }
+
+  send(message: MailMessage): Promise<void> {
+    return this.transport.send(message);
   }
 
   // Links point at the dashboard, which calls the matching API route with the token.
@@ -31,7 +35,7 @@ export class MailerService {
     return `${this.env.APP_URL}${path}?token=${encodeURIComponent(token)}`;
   }
 
-  private deliver(to: string, content: MailContent): Promise<void> {
-    return this.transport.send({ from: this.env.MAIL_FROM, to, ...content });
+  private message(to: string, content: MailContent): MailMessage {
+    return { from: this.env.MAIL_FROM, to, ...content };
   }
 }

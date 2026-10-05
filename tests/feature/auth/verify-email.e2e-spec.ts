@@ -15,7 +15,7 @@ describe('POST /auth/verify-email (e2e)', () => {
       .http()
       .post('/auth/verify-email')
       .send({ token: lastMailToken(t.mail) })
-      .expect(204);
+      .expect(200);
 
     const loggedIn = await t.http().post('/auth/login').send(credentials).expect(200);
     expect(dataOf<{ user: { emailVerified: boolean } }>(loggedIn).user.emailVerified).toBe(true);
@@ -25,7 +25,7 @@ describe('POST /auth/verify-email (e2e)', () => {
     const { t } = ctx;
     await t.http().post('/auth/register').send(account).expect(201);
     const token = lastMailToken(t.mail);
-    await t.http().post('/auth/verify-email').send({ token }).expect(204);
+    await t.http().post('/auth/verify-email').send({ token }).expect(200);
 
     const reused = await t.http().post('/auth/verify-email').send({ token }).expect(401);
 

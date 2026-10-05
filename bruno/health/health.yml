@@ -22,4 +22,6 @@ settings:
   maxRedirects: 5
 
 docs: |-
-  Liveness check. Answers `{ "success": true, "data": { "status": "ok" } }`.
+  Liveness check. Answers `{ "success": true, "data": { "status": "ok" }, "error": null }`.
+  Does not query PostgreSQL. Use `/health/readiness` to check dependency availability.
+  No route-specific error codes.

@@ -35,6 +35,9 @@ export const envSchema = z
     SMTP_USER: z.string().optional(),
     SMTP_PASS: z.string().optional(),
     SMTP_SECURE: z.stringbool().default(false),
+    MAIL_OUTBOX_POLL_MS: positiveInt().default(1000),
+    MAIL_OUTBOX_RETRY_MS: positiveInt().default(5000),
+    MAIL_OUTBOX_LEASE_MS: positiveInt().default(120_000),
     /**
      * Check new passwords against Have I Been Pwned. Only a 5-character hash prefix is ever sent; see
      * PwnedPasswordsClient for the k-anonymity protocol.

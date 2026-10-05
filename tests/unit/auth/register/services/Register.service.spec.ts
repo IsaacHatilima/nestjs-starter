@@ -2,12 +2,18 @@ import { AppError } from '@/common/errors/app-error';
 import { ErrorCode } from '@/common/errors/error-codes';
 import { memoryMailer, securityServices } from '@tests/setup/security.fixture';
 import { publicUser, USER_ID } from '@tests/setup/user.fixture';
-import { RegisterRepository } from '@/auth/register/repositories/Register.repository';
+import {
+  RegisterRepository,
+  type NewUser,
+  type RegistrationEmail,
+} from '@/auth/register/repositories/Register.repository';
+import { mailMessageSchema } from '@/mail/mail-message.schema';
+import { UserRepository } from '@/auth/shared/repositories/User.repository';
 import type { PasswordBlocklist } from '@/security/password-blocklist.service';
 import { RegisterService } from '@/auth/register/services/Register.service';
 import { firstArg } from '@tests/setup/mock-calls';
 
-const { env, hasher, tokens } = securityServices();
+const { env, hasher, tokens, cipher } = securityServices();
 
 const REGISTRATION = {
   email: 'ada@example.com',
@@ -19,20 +25,21 @@ const REGISTRATION = {
 function build(verdict: { blocked: boolean; reason?: string } = { blocked: false }) {
   const blocklist = { check: jest.fn().mockResolvedValue(verdict) };
   const repository = {
-    findByEmail: jest.fn().mockResolvedValue(null),
     createUser: jest.fn().mockResolvedValue(publicUser({ emailVerified: false })),
-    createVerificationToken: jest.fn().mockResolvedValue(undefined),
   };
+  const userRepository = { findByEmail: jest.fn().mockResolvedValue(null) };
   const { transport, mailer } = memoryMailer();
   const service = new RegisterService(
     repository as unknown as RegisterRepository,
+    userRepository as unknown as UserRepository,
     hasher,
     tokens,
     mailer,
     blocklist as unknown as PasswordBlocklist,
+    cipher,
     env,
   );
-  return { repository, transport, blocklist, service };
+  return { repository, userRepository, transport, blocklist, service };
 }
 
 describe('RegisterService', () => {
@@ -60,26 +67,25 @@ describe('RegisterService', () => {
     expect(stored.lastName).toBe('Lovelace');
   });
 
-  it('emails a verification link whose token hashes to the stored token', async () => {
+  it('queues an encrypted verification link whose token hashes to the stored token', async () => {
     const { repository, transport, service } = build();
 
     const user = await service.handle(REGISTRATION);
 
     expect(user.emailVerified).toBe(false);
-    const stored = firstArg<{
-      userId: string;
-      tokenHash: string;
-      expiresAt: Date;
-    }>(repository.createVerificationToken);
-    const link = transport.last()?.text.match(/token=([^\s]+)/)?.[1] ?? '';
-    expect(stored.userId).toBe(USER_ID);
+    const [, stored] = repository.createUser.mock.calls[0] as [NewUser, RegistrationEmail];
+    const message = mailMessageSchema.parse(JSON.parse(cipher.decrypt(stored.encryptedPayload)));
+    const link = message.text.match(/token=([^\s]+)/)?.[1] ?? '';
+    expect(message.to).toBe(REGISTRATION.email);
+    expect(stored.encryptedPayload).not.toContain(REGISTRATION.email);
+    expect(transport.sent).toHaveLength(0);
     expect(tokens.hashOpaqueToken(decodeURIComponent(link))).toBe(stored.tokenHash);
     expect(stored.expiresAt.getTime()).toBeGreaterThan(Date.now());
   });
 
   it('rejects an email that is already registered', async () => {
-    const { repository, service } = build();
-    repository.findByEmail.mockResolvedValue({ id: USER_ID });
+    const { repository, userRepository, service } = build();
+    userRepository.findByEmail.mockResolvedValue({ id: USER_ID });
 
     await expect(service.handle(REGISTRATION)).rejects.toMatchObject<Partial<AppError>>({
       code: ErrorCode.EMAIL_ALREADY_REGISTERED,

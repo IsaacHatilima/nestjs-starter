@@ -12,11 +12,15 @@ export interface TwoFactorSubject {
   twoFactorLastUsedStep: number | null;
 }
 
-/** Persistence hooks a second-factor check needs; each action repository provides them. */
-export interface TwoFactorStore {
+/** The shared user repository claims TOTP steps without exposing database details here. */
+export interface TotpStepRecorder {
   /** Claims the step; false when it was already used (including by a concurrent request). */
   recordTotpStep(userId: string, step: number): Promise<boolean>;
-  consumeRecoveryCode(userId: string, codeHash: string): Promise<boolean>;
+}
+
+/** Recovery-code persistence remains separate from user persistence. */
+export interface RecoveryCodeConsumer {
+  consume(userId: string, codeHash: string): Promise<boolean>;
 }
 
 /**
@@ -32,25 +36,30 @@ export class TwoFactorVerifier {
     private readonly recovery: RecoveryCodeService,
   ) {}
 
-  async verify(subject: TwoFactorSubject, code: string, store: TwoFactorStore): Promise<boolean> {
+  async verify(
+    subject: TwoFactorSubject,
+    code: string,
+    users: TotpStepRecorder,
+    recoveryCodes: RecoveryCodeConsumer,
+  ): Promise<boolean> {
     if (!subject.twoFactorSecret) return false;
     const compact = code.replace(/\s+/g, '');
     // Six digits can only be an authenticator code; anything else is treated as a recovery code.
     if (TOTP_CODE.test(compact)) {
-      return this.verifyTotp(subject, subject.twoFactorSecret, compact, store);
+      return this.verifyTotp(subject, subject.twoFactorSecret, compact, users);
     }
-    return store.consumeRecoveryCode(subject.id, this.recovery.hash(compact));
+    return recoveryCodes.consume(subject.id, this.recovery.hash(compact));
   }
 
   private async verifyTotp(
     subject: TwoFactorSubject,
     encryptedSecret: string,
     code: string,
-    store: TwoFactorStore,
+    users: TotpStepRecorder,
   ): Promise<boolean> {
     const secret = this.cipher.decrypt(encryptedSecret);
     const result = await this.totp.verify(secret, code, subject.twoFactorLastUsedStep);
     if (!result.valid) return false;
-    return store.recordTotpStep(subject.id, result.timeStep);
+    return users.recordTotpStep(subject.id, result.timeStep);
   }
 }

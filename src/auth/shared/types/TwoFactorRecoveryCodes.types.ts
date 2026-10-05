@@ -1,4 +1,5 @@
+import type { z } from 'zod';
+import type { TwoFactorRecoveryCodesSchema } from '@/auth/shared/schemas/TwoFactorRecoveryCodes.schema';
+
 /** Plain recovery codes, returned exactly once; only their hashes are stored. */
-export interface TwoFactorRecoveryCodes {
-  recoveryCodes: readonly string[];
-}
+export type TwoFactorRecoveryCodes = z.infer<typeof TwoFactorRecoveryCodesSchema>;

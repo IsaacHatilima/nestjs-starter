@@ -7,7 +7,7 @@ const ALGORITHM = 'aes-256-gcm';
 const IV_BYTES = 12;
 const SEGMENTS = 3;
 
-/** Encrypts secrets at rest (TOTP seeds) with AES-256-GCM. Payload: `iv.tag.ciphertext` in base64url. */
+/** Encrypts TOTP seeds and queued mail at rest with AES-256-GCM. Payload: `iv.tag.ciphertext` in base64url. */
 @Injectable()
 export class SecretCipher {
   private readonly key: Buffer;
