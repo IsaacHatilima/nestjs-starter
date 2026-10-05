@@ -4,7 +4,7 @@ import type { SessionInput, TokenPair } from '@/auth/shared/types/AuthResult.typ
 
 /** The one repository method session issuance needs. */
 export interface SessionCreator {
-  createSession(input: SessionInput): Promise<{ id: string }>;
+  create(input: SessionInput): Promise<{ id: string }>;
 }
 
 /**
@@ -19,7 +19,7 @@ export async function issueSession(
 ): Promise<TokenPair> {
   // The refresh token is created first because its hash is part of the session row.
   const refresh = tokens.createOpaqueToken();
-  const session = await store.createSession({
+  const session = await store.create({
     userId,
     refreshTokenHash: refresh.hash,
     expiresAt: tokens.refreshTokenExpiry(),

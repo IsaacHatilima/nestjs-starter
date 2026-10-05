@@ -1,3 +1,5 @@
+import { UserRepository } from '@/auth/shared/repositories/User.repository';
+import { SessionRepository } from '@/auth/shared/repositories/Session.repository';
 import { ErrorCode } from '@/common/errors/error-codes';
 import { securityServices } from '@tests/setup/security.fixture';
 import { credentials, META, profile, SESSION_ID, USER_ID } from '@tests/setup/user.fixture';
@@ -13,22 +15,24 @@ beforeAll(async () => {
 });
 
 function build(requireVerification = true) {
-  const repository = {
-    findCredentialsByEmail: jest.fn().mockResolvedValue(null),
-    findProfile: jest.fn().mockResolvedValue(profile()),
-    createSession: jest.fn().mockResolvedValue({ id: SESSION_ID }),
-  };
-  const service = new LoginService(repository as unknown as LoginRepository, hasher, tokens, {
-    ...env,
-    REQUIRE_EMAIL_VERIFICATION: requireVerification,
-  });
-  return { repository, service };
+  const userRepository = { findByEmail: jest.fn().mockResolvedValue(null) };
+  const sessionRepository = { create: jest.fn().mockResolvedValue({ id: SESSION_ID }) };
+  const repository = { findProfile: jest.fn().mockResolvedValue(profile()) };
+  const service = new LoginService(
+    repository as unknown as LoginRepository,
+    userRepository as unknown as UserRepository,
+    sessionRepository as unknown as SessionRepository,
+    hasher,
+    tokens,
+    { ...env, REQUIRE_EMAIL_VERIFICATION: requireVerification },
+  );
+  return { repository, userRepository, sessionRepository, service };
 }
 
 describe('LoginService', () => {
   it('issues a session and tokens for valid credentials', async () => {
-    const { repository, service } = build();
-    repository.findCredentialsByEmail.mockResolvedValue(credentials({ passwordHash }));
+    const { userRepository, sessionRepository, service } = build();
+    userRepository.findByEmail.mockResolvedValue(credentials({ passwordHash }));
 
     const result = await service.handle({ email: 'ada@example.com', password: PASSWORD }, META);
 
@@ -43,7 +47,7 @@ describe('LoginService', () => {
       userId: USER_ID,
       sessionId: SESSION_ID,
     });
-    expect(repository.createSession).toHaveBeenCalledWith(
+    expect(sessionRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: USER_ID,
         ip: '127.0.0.1',
@@ -53,14 +57,14 @@ describe('LoginService', () => {
   });
 
   it('never creates a session when the profile is missing', async () => {
-    const { repository, service } = build();
-    repository.findCredentialsByEmail.mockResolvedValue(credentials({ passwordHash }));
+    const { repository, userRepository, sessionRepository, service } = build();
+    userRepository.findByEmail.mockResolvedValue(credentials({ passwordHash }));
     repository.findProfile.mockResolvedValue(null);
 
     await expect(service.handle({ email: 'ada@example.com', password: PASSWORD }, META)).rejects.toMatchObject({
       code: ErrorCode.NOT_FOUND,
     });
-    expect(repository.createSession).not.toHaveBeenCalled();
+    expect(sessionRepository.create).not.toHaveBeenCalled();
   });
 
   it('rejects an unknown email with the same error as a wrong password', async () => {
@@ -72,18 +76,18 @@ describe('LoginService', () => {
   });
 
   it('rejects a wrong password', async () => {
-    const { repository, service } = build();
-    repository.findCredentialsByEmail.mockResolvedValue(credentials({ passwordHash }));
+    const { userRepository, sessionRepository, service } = build();
+    userRepository.findByEmail.mockResolvedValue(credentials({ passwordHash }));
 
     await expect(service.handle({ email: 'ada@example.com', password: 'wrong' }, META)).rejects.toMatchObject({
       code: ErrorCode.INVALID_CREDENTIALS,
     });
-    expect(repository.createSession).not.toHaveBeenCalled();
+    expect(sessionRepository.create).not.toHaveBeenCalled();
   });
 
   it('blocks unverified emails when verification is required', async () => {
-    const { repository, service } = build(true);
-    repository.findCredentialsByEmail.mockResolvedValue(credentials({ passwordHash, emailVerifiedAt: null }));
+    const { userRepository, service } = build(true);
+    userRepository.findByEmail.mockResolvedValue(credentials({ passwordHash, emailVerifiedAt: null }));
 
     await expect(service.handle({ email: 'ada@example.com', password: PASSWORD }, META)).rejects.toMatchObject({
       code: ErrorCode.EMAIL_NOT_VERIFIED,
@@ -91,8 +95,8 @@ describe('LoginService', () => {
   });
 
   it('lets unverified emails in when verification is optional', async () => {
-    const { repository, service } = build(false);
-    repository.findCredentialsByEmail.mockResolvedValue(credentials({ passwordHash, emailVerifiedAt: null }));
+    const { userRepository, service } = build(false);
+    userRepository.findByEmail.mockResolvedValue(credentials({ passwordHash, emailVerifiedAt: null }));
 
     await expect(service.handle({ email: 'ada@example.com', password: PASSWORD }, META)).resolves.toMatchObject({
       status: 'authenticated',
@@ -100,8 +104,8 @@ describe('LoginService', () => {
   });
 
   it('returns a two-factor challenge instead of tokens when 2FA is enabled', async () => {
-    const { repository, service } = build();
-    repository.findCredentialsByEmail.mockResolvedValue(
+    const { userRepository, sessionRepository, service } = build();
+    userRepository.findByEmail.mockResolvedValue(
       credentials({
         passwordHash,
         twoFactorEnabled: true,
@@ -115,6 +119,6 @@ describe('LoginService', () => {
     await expect(tokens.verifyTwoFactorChallenge(result.challengeToken)).resolves.toEqual({
       userId: USER_ID,
     });
-    expect(repository.createSession).not.toHaveBeenCalled();
+    expect(sessionRepository.create).not.toHaveBeenCalled();
   });
 });

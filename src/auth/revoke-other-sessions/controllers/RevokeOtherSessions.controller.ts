@@ -1,5 +1,7 @@
+import { z } from 'zod';
 import { Controller, HttpCode, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiEnvelopeResponse } from '@/common/openapi/api-envelope-response.decorator';
 import type { AuthPrincipal } from '@/security/auth-principal';
 import { CurrentAuth } from '@/security/decorators/current-auth.decorator';
 import { RevokeOtherSessionsService } from '@/auth/revoke-other-sessions/services/RevokeOtherSessions.service';
@@ -15,7 +17,8 @@ export class RevokeOtherSessionsController {
   constructor(private readonly service: RevokeOtherSessionsService) {}
 
   @Post('revoke-other-sessions')
-  @HttpCode(204)
+  @HttpCode(200)
+  @ApiEnvelopeResponse({ data: z.null(), bearer: true })
   handle(@CurrentAuth() auth: AuthPrincipal): Promise<void> {
     return this.service.handle(auth);
   }

@@ -18,7 +18,7 @@ describe('MailerService', () => {
   });
 
   it('sends a verification email that links to the dashboard with the token', async () => {
-    await mailer.sendEmailVerification('ada@example.com', 'tok-123');
+    await mailer.send(mailer.emailVerificationMessage('ada@example.com', 'tok-123'));
 
     expect(transport.sent).toHaveLength(1);
     const [message] = transport.sent;
@@ -30,7 +30,7 @@ describe('MailerService', () => {
   });
 
   it('sends a password reset email that links to the dashboard with the token', async () => {
-    await mailer.sendPasswordReset('ada@example.com', 'tok-456');
+    await mailer.send(mailer.passwordResetMessage('ada@example.com', 'tok-456'));
 
     const [message] = transport.sent;
     expect(message.subject).toMatch(/reset/i);
@@ -38,13 +38,13 @@ describe('MailerService', () => {
   });
 
   it('url-encodes tokens inside links', async () => {
-    await mailer.sendEmailVerification('ada@example.com', 'a b&c');
+    await mailer.send(mailer.emailVerificationMessage('ada@example.com', 'a b&c'));
 
     expect(transport.sent[0].text).toContain('token=a%20b%26c');
   });
 
   it('lets the memory transport be cleared between tests', async () => {
-    await mailer.sendEmailVerification('ada@example.com', 'x');
+    await mailer.send(mailer.emailVerificationMessage('ada@example.com', 'x'));
     transport.clear();
 
     expect(transport.sent).toHaveLength(0);

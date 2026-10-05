@@ -42,3 +42,6 @@ export const twoFactorNotSetup = (): AppError =>
 
 export const notFound = (what: string): AppError =>
   new AppError(ErrorCode.NOT_FOUND, `${what} not found`, HttpStatus.NOT_FOUND);
+
+export const serviceUnavailable = (): AppError =>
+  new AppError(ErrorCode.SERVICE_UNAVAILABLE, 'Service unavailable', HttpStatus.SERVICE_UNAVAILABLE);

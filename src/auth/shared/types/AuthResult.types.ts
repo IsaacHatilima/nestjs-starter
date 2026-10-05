@@ -1,21 +1,15 @@
-import type { User } from './User.types';
+import type { z } from 'zod';
+import type {
+  AuthenticatedResultSchema,
+  LoginResultSchema,
+  TokenPairSchema,
+  TwoFactorRequiredResultSchema,
+} from '@/auth/shared/schemas/AuthResult.schema';
 
-export interface TokenPair {
-  accessToken: string;
-  refreshToken: string;
-}
-
-export interface AuthenticatedResult extends TokenPair {
-  status: 'authenticated';
-  user: User;
-}
-
-export interface TwoFactorRequiredResult {
-  status: 'two_factor_required';
-  challengeToken: string;
-}
-
-export type LoginResult = AuthenticatedResult | TwoFactorRequiredResult;
+export type TokenPair = z.infer<typeof TokenPairSchema>;
+export type AuthenticatedResult = z.infer<typeof AuthenticatedResultSchema>;
+export type TwoFactorRequiredResult = z.infer<typeof TwoFactorRequiredResultSchema>;
+export type LoginResult = z.infer<typeof LoginResultSchema>;
 
 export interface SessionInput {
   userId: string;

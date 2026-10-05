@@ -1,3 +1,5 @@
+import { UserRepository } from '@/auth/shared/repositories/User.repository';
+import { RecoveryCodeRepository } from '@/auth/shared/repositories/RecoveryCode.repository';
 import { generate } from 'otplib';
 import { ErrorCode } from '@/common/errors/error-codes';
 import { securityServices } from '@tests/setup/security.fixture';
@@ -14,8 +16,8 @@ beforeAll(async () => {
 });
 
 function build(secret: string, enabled = true) {
-  const repository = {
-    findCredentialsById: jest.fn().mockResolvedValue(
+  const userRepository = {
+    findById: jest.fn().mockResolvedValue(
       credentials({
         passwordHash,
         twoFactorEnabled: enabled,
@@ -23,11 +25,17 @@ function build(secret: string, enabled = true) {
       }),
     ),
     recordTotpStep: jest.fn().mockResolvedValue(true),
-    consumeRecoveryCode: jest.fn().mockResolvedValue(false),
-    disable: jest.fn().mockResolvedValue(undefined),
   };
-  const service = new DisableTotpService(repository as unknown as DisableTotpRepository, hasher, verifier);
-  return { repository, service };
+  const codeRepository = { consume: jest.fn().mockResolvedValue(false) };
+  const repository = { disable: jest.fn().mockResolvedValue(undefined) };
+  const service = new DisableTotpService(
+    repository as unknown as DisableTotpRepository,
+    userRepository as unknown as UserRepository,
+    codeRepository as unknown as RecoveryCodeRepository,
+    hasher,
+    verifier,
+  );
+  return { repository, userRepository, codeRepository, service };
 }
 
 describe('DisableTotpService', () => {

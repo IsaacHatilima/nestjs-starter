@@ -6,7 +6,7 @@ that several flows share lives outside the feature folders.
 ```
 zitd-api/
 ├── src/
-│   ├── main.ts                      bootstrap: CORS, trust proxy, Swagger, listen
+│   ├── main.ts                      bootstrap: shared HTTP setup, shutdown hooks, Swagger, listen
 │   ├── app.module.ts                wires config, database, security, mail, throttling, health, auth
 │   ├── auth/
 │   │   ├── auth.module.ts           groups the flow modules below
@@ -14,10 +14,10 @@ zitd-api/
 │   │   │   ├── types/               User, UserCredentials, AuthResult, TwoFactorRecoveryCodes, User.mapper
 │   │   │   └── services/            issueSession (session row + token pair), used by login flows
 │   │   └── <flow>/                  one folder per flow, all with the same shape:
-│   │       ├── <flow>.module.ts     registers the three classes below
+│   │       ├── <flow>.module.ts     registers the controller, service and optional flow repository
 │   │       ├── controllers/         <Flow>.controller.ts   HTTP in, service call, HTTP out
-│   │       ├── services/            <Flow>.service.ts      business rules (+ <Flow>.service.spec.ts)
-│   │       ├── repositories/        <Flow>.repository.ts   data access only (Drizzle)
+│   │       ├── services/            <Flow>.service.ts      business rules; may inject shared repositories directly
+│   │       ├── repositories/        <Flow>.repository.ts   flow SQL, mapping and transactions when needed
 │   │       ├── schemas/             <Flow>.schema.ts       Zod request schema
 │   │       ├── dto/                 <Flow>.dto.ts          nestjs-zod DTO built from the schema
 │   │       └── types/               flow-specific result types (empty when the flow returns shared types)
@@ -30,10 +30,10 @@ zitd-api/
 │   ├── security/                    argon2 hasher, JWT + opaque tokens, TOTP, AES-GCM cipher,
 │   │                                recovery codes, two-factor verifier, access-token guard, decorators
 │   ├── database/                    Drizzle module, schema/, migration runner, pg error helper
-│   ├── mail/                        mailer, templates/, transports/ (log, smtp, memory)
-│   ├── config/                      Zod env schema, ENV token, config module, api-docs gate
-│   ├── common/                      envelope contract, response interceptor, exception filter, error codes, throttle, validators
-│   ├── health/                      GET /health
+│   ├── mail/                        mailer, templates/, transports/, shared/ outbox writes, deliver-email/ worker
+│   ├── config/                      Zod env schema, ENV token, config module, shared HTTP setup, API docs
+│   ├── common/                      envelope, response interceptor, exception filter, errors, throttle, validators
+│   ├── health/                      GET /health (liveness), readiness/ for GET /health/readiness
 ├── tests/
 │   ├── unit/                        mirrors src/; one spec per unit, no database, no network
 │   ├── feature/<area>/<flow>.e2e-spec.ts   one end-to-end file per flow (auth/, profile/, health/, database/)
@@ -42,7 +42,7 @@ zitd-api/
 ├── bruno/                           Bruno collection: one request file per route, ROUTES.md
 │   └── <area>/protected/            bearer routes; the folder carries the auth, the requests inherit it
 ├── drizzle/                         generated SQL migrations
-├── docs/                            this file and the design spec under superpowers/specs/
+├── docs/                            layout.md, runtime.md and the design spec under superpowers/specs/
 ├── AGENTS.md                        the only agent guide (CLAUDE.md points here)
 ├── drizzle.config.ts
 ├── jest.coverage.config.js          unit + e2e coverage in one run
@@ -54,23 +54,23 @@ zitd-api/
 | Folder under `src/auth/`    | Route                                  | Returns                  |
 | --------------------------- | -------------------------------------- | ------------------------ |
 | `register`                  | `POST /auth/register`                  | `User`                   |
-| `verify-email`              | `POST /auth/verify-email`              | 204                      |
-| `resend-verification`       | `POST /auth/resend-verification`       | 204                      |
+| `verify-email`              | `POST /auth/verify-email`              | 200, null data           |
+| `resend-verification`       | `POST /auth/resend-verification`       | 200, null data           |
 | `login`                     | `POST /auth/login`                     | `LoginResult`            |
 | `verify-two-factor`         | `POST /auth/verify-two-factor`         | `AuthenticatedResult`    |
 | `refresh-token`             | `POST /auth/refresh-token`             | `TokenPair`              |
-| `logout`                    | `POST /auth/logout`                    | 204                      |
-| `forgot-password`           | `POST /auth/forgot-password`           | 204                      |
-| `reset-password`            | `POST /auth/reset-password`            | 204                      |
-| `change-password`           | `POST /auth/change-password`           | 204                      |
+| `logout`                    | `POST /auth/logout`                    | 200, null data           |
+| `forgot-password`           | `POST /auth/forgot-password`           | 200, null data           |
+| `reset-password`            | `POST /auth/reset-password`            | 200, null data           |
+| `change-password`           | `POST /auth/change-password`           | 200, null data           |
 | `me`                        | `GET /auth/me`                         | `User`                   |
 | `setup-totp`                | `POST /auth/setup-totp`                | `TwoFactorSetup`         |
 | `enable-totp`               | `POST /auth/enable-totp`               | `TwoFactorRecoveryCodes` |
-| `disable-totp`              | `POST /auth/disable-totp`              | 204                      |
+| `disable-totp`              | `POST /auth/disable-totp`              | 200, null data           |
 | `regenerate-recovery-codes` | `POST /auth/regenerate-recovery-codes` | `TwoFactorRecoveryCodes` |
 | `list-sessions`             | `GET /auth/list-sessions`              | `Session[]`              |
-| `revoke-session`            | `POST /auth/revoke-session`            | 204                      |
-| `revoke-other-sessions`     | `POST /auth/revoke-other-sessions`     | 204                      |
+| `revoke-session`            | `POST /auth/revoke-session`            | 200, null data           |
+| `revoke-other-sessions`     | `POST /auth/revoke-other-sessions`     | 200, null data           |
 
 | Folder under `src/profile/` | Route            | Returns   |
 | --------------------------- | ---------------- | --------- |

@@ -12,7 +12,7 @@ runtime:
   assertions:
     - expression: res.status
       operator: eq
-      value: 204
+      value: 200
 
 settings:
   encodeUrl: true

@@ -10,7 +10,7 @@ describe('POST /auth/revoke-other-sessions (e2e)', () => {
     const second = await login(t, 'ada@example.com');
     const third = await login(t, 'ada@example.com');
 
-    await t.http().post('/auth/revoke-other-sessions').set(bearer(mine.accessToken)).expect(204);
+    await t.http().post('/auth/revoke-other-sessions').set(bearer(mine.accessToken)).expect(200);
 
     const remaining = await listSessions(t, mine.accessToken);
     expect(remaining).toHaveLength(1);

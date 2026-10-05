@@ -10,6 +10,8 @@ import type { Login } from '@/auth/login/schemas/Login.schema';
 import type { LoginResult } from '@/auth/shared/types/AuthResult.types';
 import { toUser } from '@/auth/shared/types/User.mapper';
 import type { UserCredentials } from '@/auth/shared/types/UserCredentials.types';
+import { SessionRepository } from '@/auth/shared/repositories/Session.repository';
+import { UserRepository } from '@/auth/shared/repositories/User.repository';
 import { issueSession } from '@/auth/shared/services/issue-session';
 
 /**
@@ -23,6 +25,8 @@ const NO_USER_HASH =
 export class LoginService {
   constructor(
     private readonly repository: LoginRepository,
+    private readonly userRepository: UserRepository,
+    private readonly sessionRepository: SessionRepository,
     private readonly hasher: PasswordHasher,
     private readonly tokens: TokenService,
     @Inject(ENV) private readonly env: Env,
@@ -45,12 +49,12 @@ export class LoginService {
     const profile = await this.repository.findProfile(user.id);
     if (!profile) throw notFound('Profile');
 
-    const pair = await issueSession(this.tokens, this.repository, user.id, meta);
+    const pair = await issueSession(this.tokens, this.sessionRepository, user.id, meta);
     return { status: 'authenticated', ...pair, user: toUser(user, profile) };
   }
 
   private async authenticate(data: Login): Promise<UserCredentials> {
-    const user = await this.repository.findCredentialsByEmail(data.email);
+    const user = await this.userRepository.findByEmail(data.email);
     // Verify even for unknown emails so response time does not reveal which emails exist.
     const matches = await this.hasher.verify(user?.passwordHash ?? NO_USER_HASH, data.password);
     if (!user || !matches) throw invalidCredentials();

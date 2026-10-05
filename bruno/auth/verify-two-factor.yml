@@ -5,7 +5,7 @@ info:
 
 http:
   method: POST
-  url: "{{baseUrl}}/auth/verify-two-factor"
+  url: '{{baseUrl}}/auth/verify-two-factor'
   body:
     type: json
     data: |-
@@ -13,6 +13,8 @@ http:
         "challengeToken": "{{challengeToken}}",
         "code": "756905"
       }
+  auth:
+    type: none
 
 runtime:
   scripts:
@@ -28,7 +30,7 @@ runtime:
   assertions:
     - expression: res.status
       operator: eq
-      value: "200"
+      value: '200'
 
 settings:
   encodeUrl: true

@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { UserRepository } from '@/auth/shared/repositories/User.repository';
 import { VerificationTokenRepository } from '@/auth/shared/repositories/VerificationToken.repository';
 import { toUser } from '@/auth/shared/types/User.mapper';
 import type { User } from '@/auth/shared/types/User.types';
@@ -9,6 +8,7 @@ import { isUniqueViolation } from '@/database/pg-errors';
 import { users } from '@/database/schema';
 import { ProfileRepository } from '@/profile/shared/repositories/Profile.repository';
 import { toProfile } from '@/profile/shared/types/Profile.mapper';
+import { MailOutboxRepository } from '@/mail/shared/repositories/MailOutbox.repository';
 
 export interface NewUser {
   email: string;
@@ -17,33 +17,33 @@ export interface NewUser {
   lastName: string;
 }
 
-export interface NewEmailVerificationToken {
-  userId: string;
+export interface RegistrationEmail {
   tokenHash: string;
   expiresAt: Date;
+  encryptedPayload: string;
 }
 
 @Injectable()
 export class RegisterRepository {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
-    private readonly userRepository: UserRepository,
     private readonly tokenRepository: VerificationTokenRepository,
     private readonly profileRepository: ProfileRepository,
+    private readonly outbox: MailOutboxRepository,
   ) {}
 
-  async findByEmail(email: string): Promise<{ id: string } | null> {
-    const row = await this.userRepository.findByEmail(email);
-    return row ? { id: row.id } : null;
-  }
-
-  /** Account and profile are written in one transaction, so a user can never exist without a profile. */
-  async createUser(input: NewUser): Promise<User> {
+  /** The account, profile, token and queued mail either all commit or all roll back. */
+  async createUser(input: NewUser, email: RegistrationEmail): Promise<User> {
     const { firstName, lastName, ...credentials } = input;
     try {
       return await this.db.transaction(async (tx) => {
         const [row] = await tx.insert(users).values(credentials).returning();
         const profile = await this.profileRepository.create({ userId: row.id, firstName, lastName }, tx);
+        await this.tokenRepository.replace(
+          { userId: row.id, tokenHash: email.tokenHash, expiresAt: email.expiresAt, purpose: 'email_verification' },
+          tx,
+        );
+        await this.outbox.enqueue({ tokenHash: email.tokenHash, encryptedPayload: email.encryptedPayload }, tx);
         return toUser(row, toProfile(profile));
       });
     } catch (error) {
@@ -51,9 +51,5 @@ export class RegisterRepository {
       if (isUniqueViolation(error)) throw emailAlreadyRegistered();
       throw error;
     }
-  }
-
-  createVerificationToken(input: NewEmailVerificationToken): Promise<void> {
-    return this.tokenRepository.replace({ ...input, purpose: 'email_verification' });
   }
 }

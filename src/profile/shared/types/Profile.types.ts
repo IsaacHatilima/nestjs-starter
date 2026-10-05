@@ -1,9 +1,8 @@
-/** The public shape of a user's profile. Carried inside `User`, and returned on its own by the update flow. */
-export interface Profile {
-  firstName: string;
-  lastName: string;
-  avatarUrl: string | null;
-}
+import type { z } from 'zod';
+import type { ProfileSchema } from '@/profile/shared/schemas/Profile.schema';
+
+/** Public profile output and its OpenAPI schema share one definition. */
+export type Profile = z.infer<typeof ProfileSchema>;
 
 /** The fields an update may change. An absent key leaves the column alone; `avatarUrl: null` clears it. */
 export interface ProfileChanges {

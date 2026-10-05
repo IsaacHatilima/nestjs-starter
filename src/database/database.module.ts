@@ -1,4 +1,4 @@
-import { Global, Inject, Module, OnModuleDestroy } from '@nestjs/common';
+import { Global, Inject, Module, OnApplicationShutdown } from '@nestjs/common';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import type { Env } from '@/config/env.schema';
@@ -28,11 +28,11 @@ import * as schema from './schema';
   ],
   exports: [DRIZZLE, PG_POOL],
 })
-/** Owns the pg pool so connections close on shutdown (see enableShutdownHooks in main.ts). */
-export class DatabaseModule implements OnModuleDestroy {
+/** Keep database access available until Nest has closed its HTTP connections. */
+export class DatabaseModule implements OnApplicationShutdown {
   constructor(@Inject(PG_POOL) private readonly pool: Pool) {}
 
-  async onModuleDestroy(): Promise<void> {
+  async onApplicationShutdown(): Promise<void> {
     await this.pool.end();
   }
 }

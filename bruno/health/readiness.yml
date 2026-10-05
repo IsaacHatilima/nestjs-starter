@@ -1,0 +1,28 @@
+info:
+  name: Readiness
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: '{{baseUrl}}/health/readiness'
+  auth:
+    type: none
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: 200
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  Readiness check. Checks PostgreSQL within a one-second deadline, including connection-pool waiting time.
+  Success: `{ "success": true, "data": { "status": "ok", "database": "up" }, "error": null }`.
+  Returns 503 with `SERVICE_UNAVAILABLE` when PostgreSQL is unavailable, slow, or the pool is exhausted.
+  The response does not expose database addresses, credentials, or the underlying error.

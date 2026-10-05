@@ -19,7 +19,7 @@ runtime:
   assertions:
     - expression: res.status
       operator: eq
-      value: 204
+      value: 200
 
 settings:
   encodeUrl: true
@@ -28,5 +28,7 @@ settings:
   maxRedirects: 5
 
 docs: |-
-  Replaces the pending verification token and emails a fresh link. Always 204, so it cannot be used to discover
-  accounts.
+  Replaces the pending verification token and queues a fresh link for delivery. Valid requests answer 200 with null
+  data, including unknown and already verified accounts. Paste the emailed token into the body of Verify email.
+
+  Errors: VALIDATION_ERROR, BAD_REQUEST, RATE_LIMITED, INTERNAL_ERROR.

@@ -39,6 +39,9 @@ describe('SmtpMailTransport', () => {
       port: 2525,
       secure: true,
       auth: { user: 'mailer', pass: 'hunter2' },
+      connectionTimeout: 15_000,
+      greetingTimeout: 15_000,
+      socketTimeout: 60_000,
     });
     expect(sendMail).toHaveBeenCalledWith(message);
   });

@@ -5,21 +5,25 @@ import { MailerService } from '@/mail/mailer.service';
 import { TokenService } from '@/security/token.service';
 import { ForgotPasswordRepository } from '@/auth/forgot-password/repositories/ForgotPassword.repository';
 import type { ForgotPassword } from '@/auth/forgot-password/schemas/ForgotPassword.schema';
+import { UserRepository } from '@/auth/shared/repositories/User.repository';
+import { SecretCipher } from '@/security/secret-cipher.service';
 
 const MINUTE_MS = 60 * 1000;
 
-/** Always resolves, so callers cannot learn whether an email is registered. */
+/** Known and unknown emails have the same success response; delivery happens in the outbox worker. */
 @Injectable()
 export class ForgotPasswordService {
   constructor(
     private readonly repository: ForgotPasswordRepository,
+    private readonly users: UserRepository,
     private readonly tokens: TokenService,
     private readonly mailer: MailerService,
+    private readonly cipher: SecretCipher,
     @Inject(ENV) private readonly env: Env,
   ) {}
 
   async handle(data: ForgotPassword): Promise<void> {
-    const user = await this.repository.findByEmail(data.email);
+    const user = await this.users.findByEmail(data.email);
     // Silent for unknown emails: no account enumeration.
     if (!user) return;
 
@@ -28,7 +32,7 @@ export class ForgotPasswordService {
       userId: user.id,
       tokenHash: hash,
       expiresAt: new Date(Date.now() + this.env.PASSWORD_RESET_TTL_MINUTES * MINUTE_MS),
+      encryptedPayload: this.cipher.encrypt(JSON.stringify(this.mailer.passwordResetMessage(data.email, token))),
     });
-    await this.mailer.sendPasswordReset(data.email, token);
   }
 }

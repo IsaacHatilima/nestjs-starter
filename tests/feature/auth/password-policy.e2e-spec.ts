@@ -96,7 +96,7 @@ describe('password policy (e2e)', () => {
     it('refuses a commonly used password when resetting it', async () => {
       const { t } = ctx;
       await registerAndLogin(t, 'ada@example.com');
-      await t.http().post('/auth/forgot-password').send({ email: 'ada@example.com' }).expect(204);
+      await t.http().post('/auth/forgot-password').send({ email: 'ada@example.com' }).expect(200);
       const token = t.mail.last()?.text.match(/token=([^\s]+)/)?.[1] ?? '';
 
       const response = await t

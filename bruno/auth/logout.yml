@@ -19,7 +19,7 @@ runtime:
   assertions:
     - expression: res.status
       operator: eq
-      value: 204
+      value: 200
 
 settings:
   encodeUrl: true
@@ -28,4 +28,4 @@ settings:
   maxRedirects: 5
 
 docs: |-
-  Revokes the session behind the refresh token. Idempotent: unknown or already revoked tokens also answer 204.
+  Revokes the session behind the refresh token. Idempotent: unknown or already revoked tokens also answer 200.

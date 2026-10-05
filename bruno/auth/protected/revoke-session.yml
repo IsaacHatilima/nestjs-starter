@@ -5,7 +5,7 @@ info:
 
 http:
   method: POST
-  url: "{{baseUrl}}/auth/revoke-session"
+  url: '{{baseUrl}}/auth/revoke-session'
   body:
     type: json
     data: |-
@@ -18,7 +18,7 @@ runtime:
   assertions:
     - expression: res.status
       operator: eq
-      value: "204"
+      value: '200'
 
 settings:
   encodeUrl: true

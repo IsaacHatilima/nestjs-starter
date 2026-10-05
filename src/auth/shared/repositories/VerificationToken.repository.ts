@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, gt, isNull } from 'drizzle-orm';
+import { and, eq, gt, isNull, sql } from 'drizzle-orm';
 import { type Database, DRIZZLE, type Executor } from '@/database/database.tokens';
 import { type TokenPurpose, verificationTokens } from '@/database/schema';
 
@@ -15,9 +15,16 @@ export interface NewVerificationToken {
 export class VerificationTokenRepository {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
-  /** Drops any unconsumed token of the same purpose for the user, then stores the new one. */
-  async replace(input: NewVerificationToken): Promise<void> {
-    await this.db
+  /**
+   * Drops any unconsumed token of the same purpose for the user, then stores the new one.
+   * Pass the flow transaction so its advisory lock also covers the outbox enqueue.
+   * The default executor intentionally fails: a pool statement would release the lock too early.
+   */
+  async replace(input: NewVerificationToken, on: Executor = this.db): Promise<void> {
+    if (on === this.db) throw new Error('Token replacement requires a flow transaction');
+    // Separate from row locks, so consuming a token and updating its user cannot invert the lock order.
+    await on.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`${input.userId}:${input.purpose}`}, 0))`);
+    await on
       .delete(verificationTokens)
       .where(
         and(
@@ -26,7 +33,7 @@ export class VerificationTokenRepository {
           isNull(verificationTokens.consumedAt),
         ),
       );
-    await this.db.insert(verificationTokens).values(input);
+    await on.insert(verificationTokens).values(input);
   }
 
   /**

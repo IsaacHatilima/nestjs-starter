@@ -13,7 +13,7 @@ const ctx = useTestApp();
 const NEW_PASSWORD = 'a completely new password';
 
 async function requestReset(t: TestApp, email: string): Promise<string> {
-  await t.http().post('/auth/forgot-password').send({ email }).expect(204);
+  await t.http().post('/auth/forgot-password').send({ email }).expect(200);
   return lastMailToken(t.mail);
 }
 
@@ -23,7 +23,7 @@ describe('POST /auth/reset-password (e2e)', () => {
     const session = await registerAndLogin(t, 'ada@example.com');
     const token = await requestReset(t, 'ada@example.com');
 
-    await t.http().post('/auth/reset-password').send({ token, password: NEW_PASSWORD }).expect(204);
+    await t.http().post('/auth/reset-password').send({ token, password: NEW_PASSWORD }).expect(200);
 
     const revoked = await t.http().get('/auth/me').set(bearer(session.accessToken)).expect(401);
     expect(errorCodeOf(revoked)).toBe('SESSION_REVOKED');
@@ -35,7 +35,7 @@ describe('POST /auth/reset-password (e2e)', () => {
     const { t } = ctx;
     await registerAndLogin(t, 'ada@example.com');
     const token = await requestReset(t, 'ada@example.com');
-    await t.http().post('/auth/reset-password').send({ token, password: NEW_PASSWORD }).expect(204);
+    await t.http().post('/auth/reset-password').send({ token, password: NEW_PASSWORD }).expect(200);
 
     const reused = await t
       .http()

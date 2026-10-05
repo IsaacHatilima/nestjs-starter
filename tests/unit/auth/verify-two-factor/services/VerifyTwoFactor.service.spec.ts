@@ -1,3 +1,6 @@
+import { UserRepository } from '@/auth/shared/repositories/User.repository';
+import { SessionRepository } from '@/auth/shared/repositories/Session.repository';
+import { RecoveryCodeRepository } from '@/auth/shared/repositories/RecoveryCode.repository';
 import { generate } from 'otplib';
 import { ErrorCode } from '@/common/errors/error-codes';
 import { securityServices } from '@tests/setup/security.fixture';
@@ -8,22 +11,29 @@ import { VerifyTwoFactorService } from '@/auth/verify-two-factor/services/Verify
 const { tokens, cipher, totp, verifier } = securityServices();
 
 function build() {
-  const repository = {
-    findCredentialsById: jest.fn().mockResolvedValue(null),
-    findProfile: jest.fn().mockResolvedValue(profile()),
+  const userRepository = {
+    findById: jest.fn().mockResolvedValue(null),
     recordTotpStep: jest.fn().mockResolvedValue(true),
-    consumeRecoveryCode: jest.fn().mockResolvedValue(false),
-    createSession: jest.fn().mockResolvedValue({ id: SESSION_ID }),
   };
-  const service = new VerifyTwoFactorService(repository as unknown as VerifyTwoFactorRepository, tokens, verifier);
-  return { repository, service };
+  const codeRepository = { consume: jest.fn().mockResolvedValue(false) };
+  const sessionRepository = { create: jest.fn().mockResolvedValue({ id: SESSION_ID }) };
+  const repository = { findProfile: jest.fn().mockResolvedValue(profile()) };
+  const service = new VerifyTwoFactorService(
+    repository as unknown as VerifyTwoFactorRepository,
+    userRepository as unknown as UserRepository,
+    sessionRepository as unknown as SessionRepository,
+    codeRepository as unknown as RecoveryCodeRepository,
+    tokens,
+    verifier,
+  );
+  return { repository, userRepository, sessionRepository, codeRepository, service };
 }
 
 describe('VerifyTwoFactorService', () => {
   it('completes login with a valid authenticator code', async () => {
-    const { repository, service } = build();
+    const { userRepository, service } = build();
     const secret = totp.generateSecret();
-    repository.findCredentialsById.mockResolvedValue(
+    userRepository.findById.mockResolvedValue(
       credentials({
         twoFactorEnabled: true,
         twoFactorSecret: cipher.encrypt(secret),
@@ -40,18 +50,18 @@ describe('VerifyTwoFactorService', () => {
       userId: USER_ID,
       sessionId: SESSION_ID,
     });
-    expect(repository.recordTotpStep).toHaveBeenCalledWith(USER_ID, expect.any(Number));
+    expect(userRepository.recordTotpStep).toHaveBeenCalledWith(USER_ID, expect.any(Number));
   });
 
   it('completes login with an unused recovery code', async () => {
-    const { repository, service } = build();
-    repository.findCredentialsById.mockResolvedValue(
+    const { userRepository, codeRepository, service } = build();
+    userRepository.findById.mockResolvedValue(
       credentials({
         twoFactorEnabled: true,
         twoFactorSecret: cipher.encrypt(totp.generateSecret()),
       }),
     );
-    repository.consumeRecoveryCode.mockResolvedValue(true);
+    codeRepository.consume.mockResolvedValue(true);
     const challengeToken = await tokens.signTwoFactorChallenge(USER_ID);
 
     await expect(service.handle({ challengeToken, code: 'abcde-fgh23' }, META)).resolves.toMatchObject({
@@ -60,8 +70,8 @@ describe('VerifyTwoFactorService', () => {
   });
 
   it('rejects a wrong code', async () => {
-    const { repository, service } = build();
-    repository.findCredentialsById.mockResolvedValue(
+    const { userRepository, sessionRepository, service } = build();
+    userRepository.findById.mockResolvedValue(
       credentials({
         twoFactorEnabled: true,
         twoFactorSecret: cipher.encrypt(totp.generateSecret()),
@@ -72,7 +82,7 @@ describe('VerifyTwoFactorService', () => {
     await expect(service.handle({ challengeToken, code: '000000' }, META)).rejects.toMatchObject({
       code: ErrorCode.INVALID_TWO_FACTOR_CODE,
     });
-    expect(repository.createSession).not.toHaveBeenCalled();
+    expect(sessionRepository.create).not.toHaveBeenCalled();
   });
 
   it('rejects an access token used as a challenge', async () => {
@@ -88,8 +98,8 @@ describe('VerifyTwoFactorService', () => {
   });
 
   it('rejects when the user no longer has two-factor enabled', async () => {
-    const { repository, service } = build();
-    repository.findCredentialsById.mockResolvedValue(credentials({ twoFactorEnabled: false }));
+    const { userRepository, service } = build();
+    userRepository.findById.mockResolvedValue(credentials({ twoFactorEnabled: false }));
     const challengeToken = await tokens.signTwoFactorChallenge(USER_ID);
 
     await expect(service.handle({ challengeToken, code: '000000' }, META)).rejects.toMatchObject({

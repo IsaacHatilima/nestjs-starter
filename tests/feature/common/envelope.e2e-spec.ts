@@ -3,6 +3,17 @@ import { bodyOf, errorOf, useTestApp } from '@tests/setup/test-app';
 const ctx = useTestApp();
 
 describe('response envelope (e2e)', () => {
+  it.each([
+    ['/auth/logout', { refreshToken: 'unknown' }],
+    ['/auth/forgot-password', { email: 'nobody@example.com' }],
+    ['/auth/resend-verification', { email: 'nobody@example.com' }],
+  ])('preserves all three envelope keys for a void result at %s', async (path, payload) => {
+    const response = await ctx.t.http().post(path).send(payload).expect(200);
+
+    expect(response.body).toEqual({ success: true, data: null, error: null });
+    expect(response.headers['content-type']).toMatch(/application\/json/);
+  });
+
   /**
    * The body never reaches a schema, so there are no field issues to report.
    * Calling it VALIDATION_ERROR would promise clients a `details` array that
