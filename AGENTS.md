@@ -2,27 +2,19 @@
 
 The single source of agent guidance for this project. `CLAUDE.md` only points here.
 
-<!-- prettier-ignore-start -->
-<!-- domain-driver:start -->
-## Scaffolding with domain-driver
+## Scaffolding
 
-This project uses [domain-driver](https://github.com/IsaacHatilima/domain-driver) to scaffold feature folders. Scaffold first, then fill in the generated files. Do not hand-write a layer the tool can generate.
+Scaffold with [domain-driver](https://github.com/IsaacHatilima/domain-driver) (`pnpm scaffold`), then fill in the
+generated files. Never hand-write a layer the tool can generate.
 
-- New feature: `npx domain-driver make:feature <feature>/<Entity> -a`
-- One layer in an existing feature: `npx domain-driver make:<layer> <feature>/<Entity>` where layer is types, schema, repository, service, controller, component, container, or hook
-- Any operation that is not List, Show, Create, Update, or Delete: `npx domain-driver make:action <feature>/<Entity> <actionName>`. Add `--with-input` when it takes a request body and `--returns one|void` when it does not return a list.
-
-Rules the generated code follows, and that new code must keep:
-
-- One file per action per layer. `findActiveUsers` gets `FindActiveUsers.service.ts`, `FindActiveUsers.repository.ts`, and `FindActiveUsers.controller.ts`. It never goes inside `ShowUser.service.ts` or `ListUser.service.ts`.
-- Hooks are one file per action too: `<Action><Entity>.hook.ts` exporting `use<Action><Entity>` (for example `useListUser`, `useCreateUser`). There is no combined `use<Entity>.ts`.
-- The chain is controller or hook, then service, then repository. Business logic lives in services. Data access lives in repositories. Controllers validate input and call one service.
-- Feature folders are kebab-case (`coffee-type`). Entity, action, and class names are PascalCase (`CoffeeType`, `FindActiveUsers`).
-- Generated repositories throw until you wire them to your data source. Generated controllers on Node need a line in `<feature>.routes.ts`, and on Nest need registering in `<feature>.module.ts`; the tool prints the exact line.
-
-Full guidance: `.claude/skills/domain-driver/SKILL.md`. Re-run `npx domain-driver init` after upgrading domain-driver to refresh this section.
-<!-- domain-driver:end -->
-<!-- prettier-ignore-end -->
+- A new flow: `pnpm scaffold --root src/<area> make:feature <flow>`. It writes `src/<area>/<flow>/` and imports the
+  flow's module in `src/<area>/<area>.module.ts`.
+- The flow's operation: `pnpm scaffold --root src/<area> make:action <flow>/<ReturnType> <flowAction>`, with
+  `--with-input` when it takes a body and `--returns one|list|void` when it doesn't return a list. Its controller,
+  service and repository are registered in `<flow>.module.ts`.
+- One file per action per layer, chained controller, then service, then repository. Flow folders are kebab-case; entity,
+  action and class names are PascalCase.
+- Generated repositories throw until they are wired to Drizzle (see Data access).
 
 ## Layout rules
 
@@ -30,10 +22,9 @@ Full guidance: `.claude/skills/domain-driver/SKILL.md`. Re-run `npx domain-drive
   them. A new operation that is not about proving who someone is belongs in its own area, not in `auth`.
 - One feature folder per flow under `src/<area>/<flow>/` (`login`, `register`, `setup-totp`, `update-profile`, ...). A
   flow never gains a second action; a new operation is a new flow folder.
-- Scaffold at the project root, then move the folder under its area and import its module in
-  `src/<area>/<area>.module.ts`: `pnpm scaffold make:feature <flow>` and
-  `pnpm scaffold make:action <flow>/<ReturnType> <flowAction> [--with-input] [--returns one|list|void]`, then
-  `mv src/<flow> src/<area>/<flow>`. A new area also needs its `<area>.module.ts` imported in `src/app.module.ts`.
+- Scaffold each flow straight into its area (see Scaffolding). A new area starts with `src/<area>/<area>.module.ts`,
+  imported in `src/app.module.ts`. Create it before the area's first flow, or that flow registers in
+  `src/app.module.ts`.
 - Controllers use `@Controller('<area>')` so every route is `/<area>/<flow-slug>`. An area with a single resource drops
   the slug, which is why the profile flow is `PATCH /profile` rather than `/profile/update-profile`. Actions the tool
   scaffolds as `GET` but that change state are switched to `@Post()` or `@Patch()`.
@@ -184,9 +175,8 @@ Full guidance: `.claude/skills/domain-driver/SKILL.md`. Re-run `npx domain-drive
 - 120 characters is the maximum for every line in every file: TypeScript, tests, Markdown, YAML, JSON and comments
   alike. `printWidth` in `.prettierrc` and the `max-len` ESLint rule enforce it.
 - Prettier reflows code and Markdown prose but never comments, so wrap long `//` and `/** */` comments by hand.
-- Exempt, because breaking them would corrupt them: Markdown table rows, a URL or generated value that cannot be split,
-  and the `domain-driver` section above, which is fenced with `prettier-ignore` so the tool keeps recognising its own
-  bytes.
+- Exempt, because breaking them would corrupt them: Markdown table rows, and a URL or generated value that cannot be
+  split.
 - `pnpm format` fixes what is fixable; `pnpm lint` fails on what is left.
 
 ## Before finishing any change
