@@ -26,10 +26,10 @@ generated files. Never hand-write a layer the tool can generate.
 - Scaffold each flow straight into its area (see Scaffolding). A new area starts with `src/<area>/<area>.module.ts`,
   imported in `src/app.module.ts`. Create it before the area's first flow, or that flow registers in
   `src/app.module.ts`.
-- Controllers use `@Controller('<area>')` so every route is `/<area>/<flow-slug>`. An area with a single resource drops
-  the slug, which is why the profile flow is `PATCH /profile` rather than `/profile/update-profile`. The tool routes a
-  flow's action at `@Controller('<flow>')` with the method decorator at its root; change the prefix to the area and
-  move the flow slug into the method decorator.
+- Controllers use `@Controller('<area>')` so every route is `/<area>/<flow-slug>`. An area named after its resource
+  drops the slug and routes RESTfully, which is why the profile flow is `PATCH /profile` rather than
+  `/profile/update-profile`, and an archive flow in `projects` is `POST /projects/:id/archive`. The tool generates these
+  routes and prints the one each controller answers; when it warns about route order, import that flow's module first.
 - Types used by more than one flow live in `src/<area>/shared/`. Auth's is `SharedModule`; every other area names its
   own after the area (`ProfileSharedModule`), because the auth flows that build a `User` import both. Infrastructure
   (hashing, tokens, TOTP, database, mail, config, envelope) lives in `src/security`, `src/database`, `src/mail`,
