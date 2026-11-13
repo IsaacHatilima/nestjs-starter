@@ -10,8 +10,9 @@ generated files. Never hand-write a layer the tool can generate.
 - A new flow: `pnpm scaffold --root src/<area> make:feature <flow>`. It writes `src/<area>/<flow>/` and imports the
   flow's module in `src/<area>/<area>.module.ts`.
 - The flow's operation: `pnpm scaffold --root src/<area> make:action <flow>/<ReturnType> <flowAction>`, with
-  `--with-input` when it takes a body and `--returns one|list|void` when it doesn't return a list. Its controller,
-  service and repository are registered in `<flow>.module.ts`.
+  `--with-input` when it takes a body, `--returns one|list|void` when it doesn't return a list, `--method
+  post|put|patch|delete` when it changes state (without it, an action with no body is a `GET`), and `--on-record` when
+  it acts on one record by id. Its controller, service and repository are registered in `<flow>.module.ts`.
 - One file per action per layer, chained controller, then service, then repository. Flow folders are kebab-case; entity,
   action and class names are PascalCase.
 - Generated repositories throw until they are wired to Drizzle (see Data access).
@@ -26,8 +27,9 @@ generated files. Never hand-write a layer the tool can generate.
   imported in `src/app.module.ts`. Create it before the area's first flow, or that flow registers in
   `src/app.module.ts`.
 - Controllers use `@Controller('<area>')` so every route is `/<area>/<flow-slug>`. An area with a single resource drops
-  the slug, which is why the profile flow is `PATCH /profile` rather than `/profile/update-profile`. Actions the tool
-  scaffolds as `GET` but that change state are switched to `@Post()` or `@Patch()`.
+  the slug, which is why the profile flow is `PATCH /profile` rather than `/profile/update-profile`. The tool routes a
+  flow's action at `@Controller('<flow>')` with the method decorator at its root; change the prefix to the area and
+  move the flow slug into the method decorator.
 - Types used by more than one flow live in `src/<area>/shared/`. Auth's is `SharedModule`; every other area names its
   own after the area (`ProfileSharedModule`), because the auth flows that build a `User` import both. Infrastructure
   (hashing, tokens, TOTP, database, mail, config, envelope) lives in `src/security`, `src/database`, `src/mail`,
