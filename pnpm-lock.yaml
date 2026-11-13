@@ -100,8 +100,8 @@ importers:
         specifier: ^7.0.0
         version: 7.2.1
       domain-driver:
-        specifier: ^0.11.0
-        version: 0.11.0
+        specifier: ^0.12.0
+        version: 0.12.0
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
@@ -2234,8 +2234,8 @@ packages:
     resolution: {integrity: sha512-WkrWp9GR4KXfKGYzOLmTuGVi1UWFfws377n9cc55/tb6DuqyF6pcQ5AbiHEshaDpY9v6oaSr2XCDidGmMwdzIA==}
     engines: {node: '>=8'}
 
-  domain-driver@0.11.0:
-    resolution: {integrity: sha512-T4ANqjj6Q52gnLZdwFAQpfhH8zvTRkM8x9WgWtkCbhzj7C4E3T9mVLjL90pq74OJH7C2WmGMMlf6aFgOmKy0Cw==}
+  domain-driver@0.12.0:
+    resolution: {integrity: sha512-uULPiMZBeNLkknAGOMd/m9kn31NvITE3zb9WwaNuZ9qCYhxwnerBDnTWBE3b9Eky/5bK7/mQoNRBr2kprPfYKg==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -6121,7 +6121,7 @@ snapshots:
     dependencies:
       path-type: 4.0.0
 
-  domain-driver@0.11.0:
+  domain-driver@0.12.0:
     dependencies:
       commander: 14.0.3
 

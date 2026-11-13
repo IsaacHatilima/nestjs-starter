@@ -12,7 +12,9 @@ generated files. Never hand-write a layer the tool can generate.
 - The flow's operation: `pnpm scaffold --root src/<area> make:action <flow>/<ReturnType> <flowAction>`, with
   `--with-input` when it takes a body, `--returns one|list|void` when it doesn't return a list, `--method
   post|put|patch|delete` when it changes state (without it, an action with no body is a `GET`), and `--on-record` when
-  it acts on one record by id. Its controller, service and repository are registered in `<flow>.module.ts`.
+  it acts on one record by id. A read with query parameters, such as a paged list, passes `--method get --with-input`:
+  it takes `@Query()` with the same Zod DTO, whose fields coerce from strings (`z.coerce.number()`, `z.stringbool()`).
+  Its controller, service and repository are registered in `<flow>.module.ts`.
 - One file per action per layer, chained controller, then service, then repository. Flow folders are kebab-case; entity,
   action and class names are PascalCase.
 - Generated repositories throw until they are wired to Drizzle (see Data access).
